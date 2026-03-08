@@ -1,0 +1,122 @@
+// This is your Prisma schema file
+// Hotel Management System - BSc CSIT 7th Semester Project
+// Authors: Pratik Shrestha, Dip Kumar Singh, Suraj Silwal
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  STAFF
+  GUEST
+}
+
+enum RoomType {
+  SINGLE
+  DOUBLE
+  DELUXE
+  SUITE
+  PENTHOUSE
+}
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  CLEANING
+  MAINTENANCE
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(GUEST)
+  phone     String?
+  address   String?
+  avatar    String?  // UploadThing image URL
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  bookings       Booking[]
+  roomStatusLogs RoomStatusLog[]
+
+  @@index([email])
+  @@index([role])
+}
+
+model Room {
+  id          String     @id @default(cuid())
+  number      String     @unique
+  type        RoomType
+  status      RoomStatus @default(AVAILABLE)
+  pricePerNight Float
+  floor       Int
+  capacity    Int        @default(2)
+  description String?
+  amenities   String[]   // ["WiFi", "AC", "TV", ...]
+  images      String[]   // array of image URLs
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  bookings       Booking[]
+  roomStatusLogs RoomStatusLog[]
+
+  @@index([status])
+  @@index([type])
+}
+
+model Booking {
+  id         String        @id @default(cuid())
+  userId     String
+  roomId     String
+  checkIn    DateTime
+  checkOut   DateTime
+  status     BookingStatus @default(PENDING)
+  totalPrice Float
+  adults     Int           @default(1)
+  children   Int           @default(0)
+  notes      String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([roomId])
+  @@index([checkIn, checkOut])
+  @@index([status])
+}
+
+model RoomStatusLog {
+  id        String     @id @default(cuid())
+  roomId    String
+  status    RoomStatus
+  updatedBy String     // userId of staff/admin who made the change
+  notes     String?
+  createdAt DateTime   @default(now())
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [updatedBy], references: [id])
+
+  @@index([roomId])
+}
