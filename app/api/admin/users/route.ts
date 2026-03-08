@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -8,7 +10,10 @@ export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session || (session.user as any).role !== "ADMIN") {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 });
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 403 },
+      );
     }
 
     const { searchParams } = new URL(req.url);
@@ -55,6 +60,9 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     console.error("[ADMIN_USERS_GET]", error);
-    return NextResponse.json({ success: false, error: "Failed to fetch users" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: "Failed to fetch users" },
+      { status: 500 },
+    );
   }
 }

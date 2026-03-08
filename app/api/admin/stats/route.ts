@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -9,7 +10,10 @@ export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session || (session.user as any).role !== "ADMIN") {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 403 });
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 403 },
+      );
     }
 
     const now = new Date();
@@ -19,36 +23,48 @@ export async function GET(req: NextRequest) {
     const lastMonthEnd = endOfMonth(subMonths(now, 1));
 
     // ── Room Counts by Status ────────────────────────────────────────────────
-    const [totalRooms, occupiedRooms, availableRooms, cleaningRooms, maintenanceRooms] =
-      await Promise.all([
-        prisma.room.count(),
-        prisma.room.count({ where: { status: "OCCUPIED" } }),
-        prisma.room.count({ where: { status: "AVAILABLE" } }),
-        prisma.room.count({ where: { status: "CLEANING" } }),
-        prisma.room.count({ where: { status: "MAINTENANCE" } }),
-      ]);
-
-    // ── Revenue & Bookings ───────────────────────────────────────────────────
-    const [thisMonthBookings, lastMonthBookings, totalGuests] = await Promise.all([
-      prisma.booking.findMany({
-        where: {
-          status: { in: ["CONFIRMED", "CHECKED_IN", "CHECKED_OUT"] },
-          createdAt: { gte: thisMonthStart, lte: thisMonthEnd },
-        },
-        select: { totalPrice: true },
-      }),
-      prisma.booking.findMany({
-        where: {
-          status: { in: ["CONFIRMED", "CHECKED_IN", "CHECKED_OUT"] },
-          createdAt: { gte: lastMonthStart, lte: lastMonthEnd },
-        },
-        select: { totalPrice: true },
-      }),
-      prisma.user.count({ where: { role: "GUEST" } }),
+    const [
+      totalRooms,
+      occupiedRooms,
+      availableRooms,
+      cleaningRooms,
+      maintenanceRooms,
+    ] = await Promise.all([
+      prisma.room.count(),
+      prisma.room.count({ where: { status: "OCCUPIED" } }),
+      prisma.room.count({ where: { status: "AVAILABLE" } }),
+      prisma.room.count({ where: { status: "CLEANING" } }),
+      prisma.room.count({ where: { status: "MAINTENANCE" } }),
     ]);
 
-    const revenueThisMonth = thisMonthBookings.reduce((sum, b) => sum + b.totalPrice, 0);
-    const revenueLastMonth = lastMonthBookings.reduce((sum, b) => sum + b.totalPrice, 0);
+    // ── Revenue & Bookings ───────────────────────────────────────────────────
+    const [thisMonthBookings, lastMonthBookings, totalGuests] =
+      await Promise.all([
+        prisma.booking.findMany({
+          where: {
+            status: { in: ["CONFIRMED", "CHECKED_IN", "CHECKED_OUT"] },
+            createdAt: { gte: thisMonthStart, lte: thisMonthEnd },
+          },
+          select: { totalPrice: true },
+        }),
+        prisma.booking.findMany({
+          where: {
+            status: { in: ["CONFIRMED", "CHECKED_IN", "CHECKED_OUT"] },
+            createdAt: { gte: lastMonthStart, lte: lastMonthEnd },
+          },
+          select: { totalPrice: true },
+        }),
+        prisma.user.count({ where: { role: "GUEST" } }),
+      ]);
+
+    const revenueThisMonth = thisMonthBookings.reduce(
+      (sum, b) => sum + b.totalPrice,
+      0,
+    );
+    const revenueLastMonth = lastMonthBookings.reduce(
+      (sum, b) => sum + b.totalPrice,
+      0,
+    );
     const revenueGrowth =
       revenueLastMonth === 0
         ? 100
@@ -93,7 +109,7 @@ export async function GET(req: NextRequest) {
             revenue: bookings.reduce((sum, b) => sum + b.totalPrice, 0),
             bookings: bookings.length,
           }));
-      })
+      }),
     );
 
     // ── Bookings by Room Type ───────────────────────────────────────────────
@@ -116,10 +132,12 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const bookingsByRoomType = Object.entries(typeCountMap).map(([type, count]) => ({
-      type,
-      count,
-    }));
+    const bookingsByRoomType = Object.entries(typeCountMap).map(
+      ([type, count]) => ({
+        type,
+        count,
+      }),
+    );
 
     // ── Recent Bookings ─────────────────────────────────────────────────────
     const recentBookings = await prisma.booking.findMany({
@@ -154,6 +172,9 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     console.error("[ADMIN_STATS_GET]", error);
-    return NextResponse.json({ success: false, error: "Failed to fetch stats" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: "Failed to fetch stats" },
+      { status: 500 },
+    );
   }
 }
