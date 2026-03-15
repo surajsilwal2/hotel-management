@@ -1,11 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
-import { format } from "date-fns";
-import {
-  CalendarCheck, Loader2, CheckCircle, XCircle,
-  LogIn, LogOut, RefreshCw,
-} from "lucide-react";
+import { Loader2, FileText, ShieldCheck, RefreshCw, AlertCircle } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import BsDateDisplay from "@/components/BsDateDisplay";
 
 type Booking = {
   id: string;
@@ -14,233 +11,245 @@ type Booking = {
   checkOut: string;
   totalPrice: number;
   adults: number;
-  children: number;
-  notes: string | null;
-  createdAt: string;
-  user: { name: string; email: string; phone?: string };
-  room: { number: string; type: string; floor: number };
+  notes: string;
+  guestNationality: string;
+  passportNumber: string;
+  purposeOfVisit: string;
+  fnmisReported: boolean;
+  fnmisReportedAt: string | null;
+  invoiceNumber: string | null;
+  invoiceIssuedAt: string | null;
+  creditNoteRef: string | null;
+  user: { name: string; email: string; phone: string };
+  room: { number: string; type: string };
 };
 
-const STATUS_CONFIG: Record<string, { label: string; cls: string }> = {
-  PENDING:    { label: "Pending",     cls: "bg-yellow-100 text-yellow-800" },
-  CONFIRMED:  { label: "Confirmed",   cls: "bg-blue-100 text-blue-800" },
-  CHECKED_IN: { label: "Checked In",  cls: "bg-green-100 text-green-800" },
-  CHECKED_OUT:{ label: "Checked Out", cls: "bg-slate-100 text-slate-700" },
-  CANCELLED:  { label: "Cancelled",   cls: "bg-red-100 text-red-800" },
-};
-
-const STATUS_TABS = ["ALL", "PENDING", "CONFIRMED", "CHECKED_IN", "CHECKED_OUT", "CANCELLED"] as const;
-
-type StatusAction = {
-  next: string;
-  label: string;
-  cls: string;
-  icon: React.ElementType;
-};
-
-const STATUS_ACTIONS: Record<string, StatusAction[]> = {
-  PENDING: [
-    { next: "CONFIRMED",  label: "Confirm",  cls: "bg-blue-500 hover:bg-blue-600 text-white",      icon: CheckCircle },
-    { next: "CANCELLED",  label: "Cancel",   cls: "bg-red-100 hover:bg-red-200 text-red-700",      icon: XCircle },
-  ],
-  CONFIRMED: [
-    { next: "CHECKED_IN", label: "Check In", cls: "bg-green-500 hover:bg-green-600 text-white",    icon: LogIn },
-    { next: "CANCELLED",  label: "Cancel",   cls: "bg-red-100 hover:bg-red-200 text-red-700",      icon: XCircle },
-  ],
-  CHECKED_IN: [
-    { next: "CHECKED_OUT",label: "Check Out",cls: "bg-slate-600 hover:bg-slate-700 text-white",    icon: LogOut },
-  ],
+const STATUS_COLORS: Record<string, string> = {
+  PENDING:     "bg-yellow-100 text-yellow-800",
+  CONFIRMED:   "bg-blue-100 text-blue-800",
+  CHECKED_IN:  "bg-green-100 text-green-800",
+  CHECKED_OUT: "bg-slate-100 text-slate-700",
+  CANCELLED:   "bg-red-100 text-red-800",
 };
 
 export default function AdminBookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<string>("ALL");
-  const [updating, setUpdating] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
+  const [filter, setFilter] = useState("ALL");
+  const [working, setWorking] = useState<string | null>(null);
+  const [msg, setMsg] = useState("");
 
   const fetchBookings = async () => {
     setLoading(true);
-    const params = new URLSearchParams({ page: String(page), limit: "15" });
-    if (activeTab !== "ALL") params.set("status", activeTab);
-    const res = await fetch(`/api/bookings?${params}`);
+    const params = new URLSearchParams();
+    if (filter !== "ALL") params.set("status", filter);
+    params.set("limit", "50");
+    const res = await fetch(`/api/bookings?${params.toString()}`);
     const data = await res.json();
-    if (data.success) {
-      setBookings(data.data);
-      setTotalPages(data.pagination?.totalPages || 1);
-      setTotal(data.pagination?.total || 0);
-    }
+    if (data.success) setBookings(data.data);
     setLoading(false);
   };
 
-  useEffect(() => { fetchBookings(); }, [activeTab, page]);
+  useEffect(() => { fetchBookings(); }, [filter]);
 
   const updateStatus = async (id: string, status: string) => {
-    setUpdating(id);
+    setWorking(id);
     await fetch(`/api/bookings/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
     await fetchBookings();
-    setUpdating(null);
+    setWorking(null);
   };
 
-  const getNights = (checkIn: string, checkOut: string) => {
-    const diff = new Date(checkOut).getTime() - new Date(checkIn).getTime();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  const issueInvoice = async (id: string) => {
+    setWorking(id + "_inv");
+    const res = await fetch("/api/invoice", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "issue", bookingId: id }),
+    });
+    const data = await res.json();
+    setMsg(data.message || data.error);
+    await fetchBookings();
+    setWorking(null);
+    setTimeout(() => setMsg(""), 4000);
+  };
+
+  const reportFNMIS = async (id: string) => {
+    setWorking(id + "_fnmis");
+    const res = await fetch("/api/fnmis", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bookingId: id }),
+    });
+    const data = await res.json();
+    setMsg(data.message || data.error);
+    await fetchBookings();
+    setWorking(null);
+    setTimeout(() => setMsg(""), 4000);
   };
 
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar />
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">All Bookings</h1>
-            <p className="text-slate-500 mt-1">{total} bookings total</p>
+            <h1 className="text-2xl font-bold text-slate-800">Booking Management</h1>
+            <p className="text-slate-500 mt-1">Manage bookings, invoices, and FNMIS reporting</p>
           </div>
-          <button
-            onClick={fetchBookings}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50"
-          >
+          <button onClick={fetchBookings}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50">
             <RefreshCw className="w-4 h-4" /> Refresh
           </button>
         </div>
 
-        {/* Status Tabs */}
-        <div className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-xl w-fit mb-6">
-          {STATUS_TABS.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => { setActiveTab(tab); setPage(1); }}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                activeTab === tab
-                  ? "bg-white text-slate-800 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700"
+        {/* Notification */}
+        {msg && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" /> {msg}
+          </div>
+        )}
+
+        {/* Filters */}
+        <div className="flex flex-wrap gap-2 mb-6">
+          {["ALL","PENDING","CONFIRMED","CHECKED_IN","CHECKED_OUT","CANCELLED"].map((s) => (
+            <button key={s} onClick={() => setFilter(s)}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                filter === s ? "bg-slate-800 text-white" : "bg-white border border-slate-200 text-slate-600 hover:border-slate-400"
               }`}
-            >
-              {tab === "ALL" ? "All" : STATUS_CONFIG[tab].label}
-            </button>
+            >{s === "ALL" ? "All Bookings" : s.replace("_"," ")}</button>
           ))}
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center h-64">
+          <div className="flex justify-center py-16">
             <Loader2 className="w-8 h-8 animate-spin text-amber-500" />
           </div>
-        ) : bookings.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-2xl border border-slate-100 shadow-sm">
-            <CalendarCheck className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-            <p className="text-slate-500">No bookings found for this filter.</p>
-          </div>
         ) : (
-          <>
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-slate-50 border-b border-slate-100">
-                    <tr>
-                      {["Guest", "Room", "Dates", "Nights", "Total", "Status", "Actions"].map((h) => (
-                        <th
-                          key={h}
-                          className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap"
-                        >
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {bookings.map((b) => {
-                      const cfg = STATUS_CONFIG[b.status];
-                      const nights = getNights(b.checkIn, b.checkOut);
-                      const actions = STATUS_ACTIONS[b.status] || [];
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-slate-50 border-b border-slate-100">
+                  <tr>
+                    {["Guest","Room","Check-in","Check-out","Total","Status","Invoice","FNMIS","Actions"].map(h => (
+                      <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {bookings.length === 0 && (
+                    <tr><td colSpan={9} className="px-6 py-10 text-center text-slate-400">No bookings found</td></tr>
+                  )}
+                  {bookings.map((b) => (
+                    <tr key={b.id} className="hover:bg-slate-50">
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-slate-800">{b.user?.name}</p>
+                        <p className="text-xs text-slate-400">{b.user?.email}</p>
+                        {b.guestNationality && (
+                          <span className="text-xs text-blue-600">🌍 {b.guestNationality}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
+                        Room {b.room?.number}<br/>
+                        <span className="text-xs text-slate-400">{b.room?.type}</span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <BsDateDisplay date={b.checkIn} showBoth />
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <BsDateDisplay date={b.checkOut} showBoth />
+                      </td>
+                      <td className="px-4 py-3 font-semibold whitespace-nowrap">
+                        NPR {b.totalPrice?.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[b.status]}`}>
+                          {b.status}
+                        </span>
+                      </td>
 
-                      return (
-                        <tr key={b.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-5 py-4">
-                            <p className="font-medium text-slate-800">{b.user?.name}</p>
-                            <p className="text-xs text-slate-400">{b.user?.email}</p>
-                          </td>
-                          <td className="px-5 py-4">
-                            <p className="font-medium text-slate-700">Room {b.room?.number}</p>
-                            <p className="text-xs text-slate-400">
-                              {b.room?.type} · Floor {b.room?.floor}
-                            </p>
-                          </td>
-                          <td className="px-5 py-4 whitespace-nowrap">
-                            <p className="text-slate-700">
-                              {format(new Date(b.checkIn), "dd MMM")}
-                            </p>
-                            <p className="text-xs text-slate-400">
-                              → {format(new Date(b.checkOut), "dd MMM yyyy")}
-                            </p>
-                          </td>
-                          <td className="px-5 py-4 text-slate-600">
-                            {nights}n
-                          </td>
-                          <td className="px-5 py-4 font-semibold text-slate-800 whitespace-nowrap">
-                            NPR {b.totalPrice?.toLocaleString()}
-                          </td>
-                          <td className="px-5 py-4">
-                            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.cls}`}>
-                              {cfg.label}
+                      {/* Invoice column */}
+                      <td className="px-4 py-3">
+                        {b.invoiceNumber ? (
+                          <div>
+                            <span className="text-xs font-mono text-green-700 bg-green-50 px-2 py-0.5 rounded">
+                              {b.invoiceNumber}
                             </span>
-                          </td>
-                          <td className="px-5 py-4">
-                            <div className="flex items-center gap-1.5">
-                              {actions.map((action) => {
-                                const ActionIcon = action.icon;
-                                return (
-                                  <button
-                                    key={action.next}
-                                    onClick={() => updateStatus(b.id, action.next)}
-                                    disabled={updating === b.id}
-                                    className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 ${action.cls}`}
-                                  >
-                                    {updating === b.id ? (
-                                      <Loader2 className="w-3 h-3 animate-spin" />
-                                    ) : (
-                                      <ActionIcon className="w-3 h-3" />
-                                    )}
-                                    {action.label}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                            {b.creditNoteRef && (
+                              <p className="text-xs text-red-500 mt-0.5">Reversed: {b.creditNoteRef}</p>
+                            )}
+                          </div>
+                        ) : (
+                          ["CONFIRMED","CHECKED_IN","CHECKED_OUT"].includes(b.status) && (
+                            <button
+                              onClick={() => issueInvoice(b.id)}
+                              disabled={working === b.id + "_inv"}
+                              className="flex items-center gap-1 text-xs px-2 py-1 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg hover:bg-amber-100 disabled:opacity-50"
+                            >
+                              {working === b.id + "_inv" ? <Loader2 className="w-3 h-3 animate-spin" /> : <FileText className="w-3 h-3" />}
+                              Issue
+                            </button>
+                          )
+                        )}
+                      </td>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-6">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40"
-                >
-                  Previous
-                </button>
-                <span className="text-sm text-slate-500">Page {page} of {totalPages}</span>
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="px-4 py-2 text-sm font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40"
-                >
-                  Next
-                </button>
-              </div>
-            )}
-          </>
+                      {/* FNMIS column */}
+                      <td className="px-4 py-3">
+                        {b.passportNumber ? (
+                          b.fnmisReported ? (
+                            <span className="text-xs text-green-600 flex items-center gap-1">
+                              <ShieldCheck className="w-3 h-3" /> Reported
+                            </span>
+                          ) : (
+                            <button
+                              onClick={() => reportFNMIS(b.id)}
+                              disabled={working === b.id + "_fnmis"}
+                              className="flex items-center gap-1 text-xs px-2 py-1 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-100 disabled:opacity-50"
+                            >
+                              {working === b.id + "_fnmis" ? <Loader2 className="w-3 h-3 animate-spin" /> : <ShieldCheck className="w-3 h-3" />}
+                              Report
+                            </button>
+                          )
+                        ) : (
+                          <span className="text-xs text-slate-300">—</span>
+                        )}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-1">
+                          {b.status === "PENDING" && (
+                            <button onClick={() => updateStatus(b.id, "CONFIRMED")}
+                              disabled={!!working}
+                              className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50">
+                              Confirm
+                            </button>
+                          )}
+                          {b.status === "CONFIRMED" && (
+                            <button onClick={() => updateStatus(b.id, "CHECKED_IN")}
+                              disabled={!!working}
+                              className="text-xs px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50">
+                              Check In
+                            </button>
+                          )}
+                          {b.status === "CHECKED_IN" && (
+                            <button onClick={() => updateStatus(b.id, "CHECKED_OUT")}
+                              disabled={!!working}
+                              className="text-xs px-2 py-1 bg-slate-600 text-white rounded hover:bg-slate-700 disabled:opacity-50">
+                              Check Out
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         )}
       </main>
     </div>

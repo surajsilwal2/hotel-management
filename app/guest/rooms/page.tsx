@@ -175,12 +175,20 @@ export default function GuestRoomsPage() {
                       </span>
                       <span className="text-slate-400 text-sm"> / night</span>
                     </div>
-                    <button
-                      onClick={() => setSelectedRoom(room)}
-                      className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-xl transition-colors"
-                    >
-                      Book Now
-                    </button>
+                    <div className="flex gap-2">
+                      <a
+                        href={`/guest/rooms/${room.id}`}
+                        className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition-colors"
+                      >
+                        View
+                      </a>
+                      <button
+                        onClick={() => setSelectedRoom(room)}
+                        className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-xl transition-colors"
+                      >
+                        Book Now
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -95,15 +95,35 @@ model Booking {
   adults     Int           @default(1)
   children   Int           @default(0)
   notes      String?
+
+  // ── FNMIS (Foreign Nationals Management Information System) ─────────────────
+  guestNationality  String?    // e.g. "Indian", "American", "Chinese"
+  passportNumber    String?    // Passport / citizenship number
+  purposeOfVisit    String?    // "Tourism", "Business", "Trekking", "Medical"
+  fnmisReported     Boolean    @default(false)
+  fnmisReportedAt   DateTime?
+
+  // ── IRD Billing (Inland Revenue Dept) ────────────────────────────────────────
+  invoiceNumber     String?    // Auto-generated once invoice is issued
+  invoiceIssuedAt   DateTime?  // When invoice was issued (becomes immutable after this)
+  creditNoteRef     String?    // If this booking was reversed, reference to credit note
+
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
+  // Payment metadata
+  paymentProvider     String?
+  paymentTransactionId String?
+  refunded            Boolean   @default(false)
+  refundedAt          DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  refundRequests RefundRequest[]
 
   @@index([userId])
   @@index([roomId])
   @@index([checkIn, checkOut])
+  @@index([createdAt])
   @@index([status])
 }
 
@@ -119,4 +139,17 @@ model RoomStatusLog {
   user User @relation(fields: [updatedBy], references: [id])
 
   @@index([roomId])
+}
+
+model RefundRequest {
+  id         String   @id @default(cuid())
+  bookingId  String
+  requestedBy String
+  reason     String?
+  status     String   @default("PENDING") // PENDING, APPROVED, REJECTED, PROCESSED
+  createdAt  DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
 }

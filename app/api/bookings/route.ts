@@ -11,7 +11,11 @@ const createBookingSchema = z.object({
   checkOut: z.string().datetime(),
   adults: z.number().int().min(1).default(1),
   children: z.number().int().min(0).default(0),
-  notes: z.string().optional(),
+  notes: z.string().optional().nullable(),
+  // FNMIS fields
+  guestNationality: z.string().optional().nullable(),
+  passportNumber:   z.string().optional().nullable(),
+  purposeOfVisit:   z.string().optional().nullable(),
 }).refine(
   (data) => new Date(data.checkOut) > new Date(data.checkIn),
   { message: "Check-out must be after check-in" }
@@ -28,8 +32,11 @@ export async function GET(req: NextRequest) {
     const user = session.user as any;
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "10");
+  const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
+  let limit = Math.max(1, parseInt(searchParams.get("limit") || "10"));
+  // enforce an upper cap to avoid huge responses
+  const MAX_LIMIT = 100;
+  if (limit > MAX_LIMIT) limit = MAX_LIMIT;
 
     const isAdminOrStaff = ["ADMIN", "STAFF"].includes(user.role);
 
@@ -41,7 +48,8 @@ export async function GET(req: NextRequest) {
       },
       include: {
         user: { select: { id: true, name: true, email: true, phone: true } },
-        room: { select: { id: true, number: true, type: true, floor: true, images: true } },
+        // avoid sending room images in listing to keep payload small
+        room: { select: { id: true, number: true, type: true, floor: true } },
       },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * limit,
@@ -78,8 +86,10 @@ export async function POST(req: NextRequest) {
     const parsed = createBookingSchema.safeParse(body);
 
     if (!parsed.success) {
+      // Return structured zod error details (path + message) to help debugging client input
+      const zodErrors = parsed.error.errors.map((e) => ({ path: e.path, message: e.message }));
       return NextResponse.json(
-        { success: false, error: parsed.error.errors[0].message },
+        { success: false, error: "Validation failed", details: zodErrors },
         { status: 400 }
       );
     }
@@ -135,6 +145,9 @@ export async function POST(req: NextRequest) {
         adults,
         children,
         notes,
+        guestNationality: parsed.data.guestNationality,
+        passportNumber:   parsed.data.passportNumber,
+        purposeOfVisit:   parsed.data.purposeOfVisit,
       },
       include: {
         room: { select: { number: true, type: true, floor: true } },

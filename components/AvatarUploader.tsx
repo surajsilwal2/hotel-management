@@ -54,7 +54,7 @@ export default function AvatarUploader({ currentAvatar, name, size = "md" }: Ava
     <div className="flex flex-col items-center gap-2">
       <label className="relative cursor-pointer group">
         {/* Avatar circle */}
-        <div className={`relative ${sizeClasses[size]} rounded-full overflow-hidden border-4 border-white shadow-md bg-slate-200 flex items-center justify-center`}>
+        <div className={`${sizeClasses[size]} rounded-full overflow-hidden border-4 border-white shadow-md bg-slate-200 flex items-center justify-center`}>
           {preview ? (
             <Image src={preview} alt="Profile" fill className="object-cover" />
           ) : (

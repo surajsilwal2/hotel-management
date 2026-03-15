@@ -20,7 +20,10 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       where: { id: params.id },
       include: {
         user: { select: { id: true, name: true, email: true, phone: true } },
-        room: true,
+        // Only return full room details (including images) for admin/staff viewers.
+        room: (session.user as any).role === "ADMIN" || (session.user as any).role === "STAFF"
+          ? true
+          : { select: { id: true, number: true, type: true, floor: true } },
       },
     });
 
