@@ -9,6 +9,7 @@ import {
   CheckCircle, LogOut, Wrench, Sparkles, CalendarCheck, CalendarX,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
+import BsDateDisplay from "@/components/BsDateDisplay";
 import type { DashboardStats } from "@/types";
 
 const COLORS = ["#f59e0b", "#3b82f6", "#10b981", "#ef4444", "#8b5cf6"];
@@ -215,10 +216,10 @@ export default function AdminDashboard() {
                       Room {b.room?.number} — {b.room?.type}
                     </td>
                     <td className="px-6 py-4 text-slate-600">
-                      {new Date(b.checkIn).toLocaleDateString()}
+                      <BsDateDisplay date={b.checkIn} showBoth />
                     </td>
                     <td className="px-6 py-4 text-slate-600">
-                      {new Date(b.checkOut).toLocaleDateString()}
+                      <BsDateDisplay date={b.checkOut} showBoth />
                     </td>
                     <td className="px-6 py-4 font-medium text-slate-800">
                       NPR {b.totalPrice.toLocaleString()}

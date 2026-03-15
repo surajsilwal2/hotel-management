@@ -2,23 +2,25 @@
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Hotel, LayoutDashboard, BedDouble, CalendarCheck, Users, LogOut, ClipboardList } from "lucide-react";
+import { Hotel, LayoutDashboard, BedDouble, CalendarCheck, Users, LogOut, ClipboardList, Globe } from "lucide-react";
+import { useCalendar } from "@/components/CalendarContext";
 
 const NAV_LINKS = {
   ADMIN: [
-    { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/admin/rooms", label: "Rooms", icon: BedDouble },
-    { href: "/admin/bookings", label: "Bookings", icon: CalendarCheck },
-    { href: "/admin/users", label: "Users", icon: Users },
+    { href: "/admin",          label: "Dashboard", icon: LayoutDashboard },
+    { href: "/admin/rooms",    label: "Rooms",     icon: BedDouble },
+    { href: "/admin/bookings", label: "Bookings",  icon: CalendarCheck },
+    { href: "/admin/users",    label: "Users",     icon: Users },
+    { href: "/admin/fnmis",    label: "FNMIS",     icon: Globe },
   ],
   STAFF: [
-    { href: "/staff", label: "Operations", icon: ClipboardList },
-    { href: "/guest/rooms", label: "Rooms View", icon: BedDouble },
+    { href: "/staff",       label: "Operations",  icon: ClipboardList },
+    { href: "/guest/rooms", label: "Rooms View",  icon: BedDouble },
   ],
   GUEST: [
-    { href: "/guest/rooms", label: "Browse Rooms", icon: BedDouble },
-    { href: "/guest/bookings", label: "My Bookings", icon: CalendarCheck },
-    { href: "/guest/profile", label: "Profile", icon: Users },
+    { href: "/guest/rooms",    label: "Browse Rooms", icon: BedDouble },
+    { href: "/guest/bookings", label: "My Bookings",  icon: CalendarCheck },
+    { href: "/guest/profile",  label: "Profile",      icon: Users },
   ],
 };
 
@@ -31,6 +33,7 @@ const ROLE_BADGE: Record<string, string> = {
 export default function Navbar() {
   const { data: session } = useSession();
   const pathname = usePathname();
+  const { isBS, toggleCalendar } = useCalendar();
   const role = (session?.user as any)?.role || "GUEST";
   const links = NAV_LINKS[role as keyof typeof NAV_LINKS] || NAV_LINKS.GUEST;
 
@@ -66,11 +69,26 @@ export default function Navbar() {
           })}
         </nav>
 
-        {/* User */}
-        <div className="flex items-center gap-3">
+        {/* Right side: Calendar toggle + User */}
+        <div className="flex items-center gap-2">
+          {/* BS / AD Calendar Toggle */}
+          <button
+            onClick={toggleCalendar}
+            title={isBS ? "Switch to AD (Gregorian)" : "Switch to BS (Bikram Sambat)"}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
+              isBS
+                ? "bg-amber-500 text-white border-amber-500"
+                : "bg-white text-slate-600 border-slate-200 hover:border-amber-400 hover:text-amber-600"
+            }`}
+          >
+            <span>{isBS ? "BS" : "AD"}</span>
+            <span className="opacity-60">|</span>
+            <span>{isBS ? "AD" : "BS"}</span>
+          </button>
+
           {session?.user && (
             <>
-              <div className="hidden sm:flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-2 ml-1">
                 <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-sm font-semibold text-slate-600">
                   {session.user.name?.[0]?.toUpperCase()}
                 </div>

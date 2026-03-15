@@ -1,5 +1,5 @@
-import { UploadThingError } from "uploadthing/server";
 import { createUploadthing, type FileRouter } from "uploadthing/next";
+import { UploadThingError } from "uploadthing/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
@@ -23,12 +23,10 @@ export const ourFileRouter = {
   userAvatar: f({ image: { maxFileSize: "2MB", maxFileCount: 1 } })
     .middleware(async () => {
       const session = await getServerSession(authOptions);
-      if (!session)
-        throw new UploadThingError("You must be logged in to upload an avatar");
+      if (!session) throw new UploadThingError("You must be logged in to upload an avatar");
       return { userId: (session.user as any).id };
     })
     .onUploadComplete(async ({ metadata, file }) => {
-      // Save avatar URL to user in DB
       const { default: prisma } = await import("@/lib/prisma");
       await prisma.user.update({
         where: { id: metadata.userId },

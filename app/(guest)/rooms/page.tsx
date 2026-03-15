@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import Image from "next/image";
 import { BedDouble, Users, Wifi, Tv, Wind, Coffee, Star, Loader2, Search } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import BookingModal from "@/components/BookingModal";
@@ -116,20 +115,9 @@ export default function GuestRoomsPage() {
                 key={room.id}
                 className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-shadow"
               >
-                {/* Room image */}
-                <div className="h-44 bg-gradient-to-br from-slate-200 to-slate-300 relative overflow-hidden">
-                  {room.images?.[0] ? (
-                    <Image
-                      src={room.images[0]}
-                      alt={`Room ${room.number}`}
-                      fill
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="h-full flex items-center justify-center">
-                      <BedDouble className="w-12 h-12 text-slate-400" />
-                    </div>
-                  )}
+                {/* Room image placeholder */}
+                <div className="h-44 bg-gradient-to-br from-slate-200 to-slate-300 relative flex items-center justify-center">
+                  <BedDouble className="w-12 h-12 text-slate-400" />
                   <div className="absolute top-3 left-3">
                     <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${ROOM_TYPE_COLORS[room.type]}`}>
                       {room.type}
@@ -176,12 +164,20 @@ export default function GuestRoomsPage() {
                       </span>
                       <span className="text-slate-400 text-sm"> / night</span>
                     </div>
-                    <button
-                      onClick={() => setSelectedRoom(room)}
-                      className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-xl transition-colors"
-                    >
-                      Book Now
-                    </button>
+                    <div className="flex gap-2">
+                      <a
+                        href={`/guest/rooms/${room.id}`}
+                        className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition-colors"
+                      >
+                        View
+                      </a>
+                      <button
+                        onClick={() => setSelectedRoom(room)}
+                        className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold rounded-xl transition-colors"
+                      >
+                        Book Now
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

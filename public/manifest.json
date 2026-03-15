@@ -1,0 +1,45 @@
+{
+  "name": "IHMS — Integrated Hotel Management System",
+  "short_name": "IHMS",
+  "description": "Hotel Management System for Nepali hospitality industry",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#1B2A4A",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Browse Rooms",
+      "url": "/guest/rooms",
+      "description": "Browse available hotel rooms"
+    },
+    {
+      "name": "My Bookings",
+      "url": "/guest/bookings",
+      "description": "View your reservations"
+    }
+  ]
+}
